@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ruleta de la suerte</title>
+<style>
+:root{
+  --bg:#f6f4ef; --fg:#1f2430; --muted:#6b7280; --rim:#1f2430; --btn:#1f2430; --btn-fg:#ffffff; --win:#15803d;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161c; --fg:#f2f2f2; --muted:#9aa0ac; --rim:#f2f2f2; --btn:#f2f2f2; --btn-fg:#14161c; --win:#4ade80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161c; --fg:#f2f2f2; --muted:#9aa0ac; --rim:#f2f2f2; --btn:#f2f2f2; --btn-fg:#14161c; --win:#4ade80;
+  color-scheme: dark;
+}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; height:100%; background:var(--bg); color:var(--fg);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
+  padding:16px; box-sizing:border-box; overflow-x:hidden;
+}
+h1{margin:0; font-size:clamp(1.6rem,6vw,2.2rem); letter-spacing:-.02em; text-align:center}
+.stage{position:relative; width:min(86vw,400px); max-width:100%}
+.pointer{
+  position:absolute; top:-6px; left:50%; transform:translateX(-50%); z-index:2;
+  width:0; height:0; border-left:16px solid transparent; border-right:16px solid transparent;
+  border-top:34px solid #fbbf24; filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));
+}
+svg{display:block; width:100%; height:auto}
+#wheel{transform-origin:200px 200px}
+button.spin{
+  font:inherit; font-weight:700; font-size:1.15rem; padding:14px 44px; border:0; border-radius:999px;
+  background:var(--btn); color:var(--btn-fg); cursor:pointer; transition:transform .1s, opacity .2s;
+}
+button.spin:active:not(:disabled){transform:scale(.96)}
+button.spin:disabled{opacity:.45; cursor:default}
+#result{min-height:2.4em; font-size:1.25rem; font-weight:700; text-align:center}
+#result.win{color:var(--win); font-size:1.5rem}
+#result.lose{color:var(--muted)}
+.admin{position:fixed; right:10px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); font-size:.75rem; color:var(--muted); opacity:.5}
+.admin:hover,.admin[open]{opacity:1}
+.admin summary{cursor:pointer; list-style:none; text-align:right}
+.admin div{margin-top:6px; padding:8px 10px; border:1px solid var(--muted); border-radius:8px; background:var(--bg)}
+.admin button{font:inherit; margin-top:6px; padding:4px 10px; cursor:pointer}
+.mute{position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); right:10px; z-index:3; font-size:1.3rem; line-height:1; padding:8px 10px; border:1px solid var(--muted); border-radius:10px; background:var(--bg); color:var(--fg); cursor:pointer}
+body{background-color:var(--bg); background-image:radial-gradient(circle at 20% 20%,rgba(255,193,7,.22),transparent 40%),radial-gradient(circle at 80% 30%,rgba(236,72,153,.20),transparent 40%),radial-gradient(circle at 50% 90%,rgba(59,130,246,.22),transparent 45%); background-size:140% 140%; animation:bgmove 12s ease-in-out infinite alternate}
+@keyframes bgmove{from{background-position:0% 0%}to{background-position:100% 100%}}
+h1{background:linear-gradient(90deg,#f59e0b,#ef4444,#ec4899,#8b5cf6,#3b82f6,#f59e0b); background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:shine 6s linear infinite}
+@keyframes shine{to{background-position:300% 0}}
+.stage{animation:float 4s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.stage::before{content:""; position:absolute; inset:-8%; border-radius:50%; background:radial-gradient(circle,rgba(255,200,0,.5),transparent 65%); filter:blur(14px); z-index:-1; animation:glow 2.4s ease-in-out infinite}
+@keyframes glow{0%,100%{opacity:.55; transform:scale(.97)}50%{opacity:1; transform:scale(1.04)}}
+.stage.spinning::before{animation-duration:.7s}
+.stage.winner::before{background:radial-gradient(circle,rgba(34,197,94,.75),transparent 65%); animation-duration:.5s}
+.pointer{transform-origin:50% 0}
+@keyframes flick{0%{transform:translateX(-50%) rotate(0)}30%{transform:translateX(-50%) rotate(-20deg)}100%{transform:translateX(-50%) rotate(0)}}
+.pointer.flick{animation:flick .12s ease-out}
+.bulb{fill:#fde047; filter:drop-shadow(0 0 3px #fde047); animation:blink 1s steps(1) infinite}
+.bulb:nth-child(even){animation-delay:.5s}
+.spinning .bulb,.winner .bulb{animation-duration:.24s}
+.spinning .bulb:nth-child(even),.winner .bulb:nth-child(even){animation-delay:.12s}
+@keyframes blink{0%{opacity:1}50%{opacity:.2}}
+path.pulse{animation:slicepulse .45s ease-in-out 6}
+@keyframes slicepulse{50%{filter:brightness(1.6)}}
+button.spin{position:relative; overflow:hidden; background:linear-gradient(135deg,#ef4444,#ec4899 55%,#8b5cf6); color:#fff; box-shadow:0 6px 20px rgba(236,72,153,.5); animation:btnpulse 1.6s ease-in-out infinite}
+button.spin::after{content:""; position:absolute; top:0; left:-60%; width:40%; height:100%; background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent); transform:skewX(-20deg); animation:sweep 2.4s ease-in-out infinite}
+@keyframes btnpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes sweep{0%{left:-60%}60%,100%{left:130%}}
+button.spin:disabled{animation:none}
+button.spin:disabled::after{display:none}
+#result.win{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+#result.lose{animation:shake .5s}
+@keyframes pop{from{transform:scale(.3); opacity:0}to{transform:scale(1); opacity:1}}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+#confetti{position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:5}
+@media (prefers-reduced-motion: reduce){body,h1,.stage,.stage::before,.bulb,button.spin,button.spin::after{animation:none}}
+.admin{display:none}
+.admin.show{display:block}
+</style>
+</head>
+<body>
+<button class="mute" id="muteBtn" aria-label="Activar o silenciar el sonido">🔊</button>
+<h1>🎡 Ruleta de la suerte</h1>
+
+<div class="stage">
+  <div class="pointer"></div>
+  <svg viewBox="-16 -16 432 432" aria-label="Ruleta con premios de 0%, 5%, 15%, 50% y 90%">
+    <defs>
+      <radialGradient id="shine"><stop offset="55%" stop-color="#fff" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity=".28"/></radialGradient>
+      <radialGradient id="gold" cx="35%" cy="30%"><stop offset="0" stop-color="#fff7c2"/><stop offset="1" stop-color="#f59e0b"/></radialGradient>
+    </defs>
+    <circle cx="200" cy="200" r="213" fill="#2a1f3d" stroke="#fbbf24" stroke-width="3"/>
+    <g id="bulbs"></g>
+    <g id="wheel">
+      <circle cx="200" cy="200" r="197" fill="#2a1f3d"/>
+      <g id="slices"></g>
+      <circle cx="200" cy="200" r="190" fill="url(#shine)"/>
+      <circle cx="200" cy="200" r="28" fill="url(#gold)" stroke="#2a1f3d" stroke-width="4"/>
+      <circle cx="200" cy="200" r="9" fill="#2a1f3d"/>
+    </g>
+  </svg>
+</div>
+
+<button class="spin" id="spinBtn">¡Girar!</button>
+<div id="result" aria-live="polite"></div>
+<canvas id="confetti"></canvas>
+
+<details class="admin">
+  <summary>Admin</summary>
+  <div>
+    Tiros: <b id="count">0</b><br>
+    Próximo 15% en: <b id="next">50</b> tiros<br>
+    <button id="reset">Reiniciar contador</button>
+  </div>
+</details>
+
+<script>
+// ---- Configuración ----
+const PRIZES = [
+  {label:'0%',  color:'#6b7280'},
+  {label:'5%',  color:'#2563eb'},
+  {label:'15%', color:'#16a34a'},
+  {label:'50%', color:'#d97706'},
+  {label:'90%', color:'#dc2626'}
+];
+const WIN_INDEX = 2;     // 15%
+const LOSE_INDEX = 0;    // 0%
+const EVERY = 50;        // el 15% sale cada 50 tiros
+const KEY = 'ruleta_tiros';
+
+// ---- Dibujo de la ruleta ----
+const N = PRIZES.length, STEP = 360 / N, C = 200, R = 190;
+const pt = (a, r) => { const t = a * Math.PI / 180; return [C + r * Math.sin(t), C - r * Math.cos(t)]; };
+let html = '';
+PRIZES.forEach((p, i) => {
+  const a0 = i * STEP - STEP / 2, a1 = a0 + STEP;
+  const [x0, y0] = pt(a0, R), [x1, y1] = pt(a1, R);
+  html += `<path id="slice${i}" d="M${C} ${C} L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z" fill="${p.color}" stroke="#fff" stroke-width="2"/>`;
+  html += `<text x="${C}" y="${C - R * 0.64}" transform="rotate(${i * STEP} ${C} ${C})" text-anchor="middle" dominant-baseline="middle" font-size="36" font-weight="800" fill="#fff" stroke="rgba(0,0,0,.3)" stroke-width="3" paint-order="stroke">${p.label}</text>`;
+});
+document.getElementById('slices').innerHTML = html;
+
+// ---- Contador (se guarda en este navegador) ----
+const load = () => { try { const v = parseInt(localStorage.getItem(KEY), 10); return Number.isFinite(v) && v >= 0 ? v : 0; } catch (e) { return 0; } };
+const save = n => { try { localStorage.setItem(KEY, String(n)); } catch (e) {} };
+let count = load();
+
+const wheel = document.getElementById('wheel');
+const btn = document.getElementById('spinBtn');
+const result = document.getElementById('result');
+const countEl = document.getElementById('count');
+const nextEl = document.getElementById('next');
+
+function updateAdmin() {
+  countEl.textContent = count;
+  nextEl.textContent = EVERY - (count % EVERY);
+}
+updateAdmin();
+
+// ---- Efectos visuales ----
+const stage = document.querySelector('.stage');
+const pointer = document.querySelector('.pointer');
+(function () {
+  let s = '';
+  for (let i = 0; i < 24; i++) { const [x, y] = pt(i * 15, 205); s += `<circle class="bulb" cx="${x}" cy="${y}" r="4.6"/>`; }
+  document.getElementById('bulbs').innerHTML = s;
+})();
+function flick() {
+  if (reduce) return;
+  pointer.classList.remove('flick'); void pointer.offsetWidth; pointer.classList.add('flick');
+}
+const cv = document.getElementById('confetti'), ctx = cv.getContext('2d');
+let parts = [], raf = 0;
+function sizeCv() { const d = window.devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; ctx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener('resize', sizeCv); sizeCv();
+function confetti() {
+  if (reduce) return;
+  const colors = ['#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6', '#22c55e', '#fde047'];
+  const ox = innerWidth / 2, oy = innerHeight * 0.4;
+  for (let i = 0; i < 170; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 12;
+    parts.push({x: ox, y: oy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 5, w: 6 + Math.random() * 6, h: 4 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: colors[i % colors.length]});
+  }
+  if (!raf) raf = requestAnimationFrame(stepConfetti);
+}
+function stepConfetti() {
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  parts = parts.filter(p => p.y < innerHeight + 20);
+  for (const p of parts) {
+    p.vy += 0.25; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+  }
+  raf = parts.length ? requestAnimationFrame(stepConfetti) : 0;
+}
+function celebrate(idx) {
+  stage.classList.add('winner');
+  const sl = document.getElementById('slice' + idx); if (sl) sl.classList.add('pulse');
+  confetti(); setTimeout(confetti, 450);
+  setTimeout(() => stage.classList.remove('winner'), 5000);
+}
+
+// ---- Sonido (generado con Web Audio, sin archivos) ----
+let actx = null, muted = false;
+try { muted = localStorage.getItem('ruleta_mute') === '1'; } catch (e) {}
+function ac() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (actx && actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, start, dur, type, vol) {
+  const a = ac(); if (!a || muted) return;
+  const t = a.currentTime + start;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+const tick = () => { tone(1100, 0, 0.04, 'square', 0.08); flick(); };
+const winSound = () => {
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.12, 0.3, 'triangle', 0.25));
+  [1046.5, 1318.5, 1568].forEach(f => tone(f, 0.5, 0.9, 'triangle', 0.18));
+};
+const loseSound = () => { tone(392, 0, 0.25, 'sawtooth', 0.12); tone(311, 0.25, 0.55, 'sawtooth', 0.12); };
+
+function angleNow() {
+  const m = getComputedStyle(wheel).transform;
+  const v = m && m.match(/matrix\(([^)]+)\)/);
+  if (!v) return 0;
+  const p = v[1].split(',').map(Number);
+  return Math.atan2(p[1], p[0]) * 180 / Math.PI;
+}
+// Un clic cada vez que una división pasa por el puntero
+function trackTicks(startRot) {
+  let acc = startRot, last = angleNow();
+  let lastSeg = Math.floor((acc + STEP / 2) / STEP);
+  (function frame() {
+    if (!spinning) return;
+    const cur = angleNow();
+    acc += (((cur - last) % 360) + 360) % 360; last = cur;
+    const seg = Math.floor((acc + STEP / 2) / STEP);
+    if (seg !== lastSeg) { tick(); lastSeg = seg; }
+    requestAnimationFrame(frame);
+  })();
+}
+
+// ---- Giro ----
+let rot = 0, spinning = false;
+const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DURATION = reduce ? 1500 : 5000;
+
+function spin() {
+  if (spinning) return;
+  spinning = true; btn.disabled = true; result.textContent = ''; result.className = '';
+  ac();
+  stage.classList.add('spinning'); stage.classList.remove('winner');
+  const oldSl = document.querySelector('path.pulse'); if (oldSl) oldSl.classList.remove('pulse');
+  count++; save(count); updateAdmin();
+
+  const idx = (count % EVERY === 0) ? WIN_INDEX : LOSE_INDEX;
+  const offset = (Math.random() - 0.5) * (STEP - 16);
+  const target = -(idx * STEP) + offset;
+  const delta = (((target - rot) % 360) + 360) % 360;
+  const rotStart = rot;
+  rot += 360 * 6 + delta;
+
+  wheel.style.transition = `transform ${DURATION}ms cubic-bezier(.12,.6,.1,1)`;
+  wheel.style.transform = `rotate(${rot}deg)`;
+  trackTicks(rotStart);
+
+  setTimeout(() => {
+    if (idx === WIN_INDEX) {
+      result.textContent = '🎉 ¡Ganaste 15% de descuento!';
+      winSound();
+      celebrate(idx);
+      result.className = 'win';
+    } else {
+      result.textContent = '0% esta vez. ¡Inténtalo de nuevo!';
+      loseSound();
+      result.className = 'lose';
+    }
+    spinning = false; btn.disabled = false; stage.classList.remove('spinning');
+  }, DURATION + 100);
+}
+
+btn.addEventListener('click', spin);
+if (location.hash === '#admin') document.querySelector('.admin').classList.add('show');
+
+const muteBtn = document.getElementById('muteBtn');
+const paintMute = () => { muteBtn.textContent = muted ? '🔇' : '🔊'; muteBtn.setAttribute('aria-pressed', String(muted)); };
+paintMute();
+muteBtn.addEventListener('click', () => {
+  muted = !muted;
+  try { localStorage.setItem('ruleta_mute', muted ? '1' : '0'); } catch (e) {}
+  paintMute();
+});
+document.getElementById('reset').addEventListener('click', () => {
+  count = 0; save(count); updateAdmin();
+});
+</script>
+</body>
+</html>
